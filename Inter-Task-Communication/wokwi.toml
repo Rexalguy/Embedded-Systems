@@ -1,0 +1,5 @@
+# Wokwi simulation configuration for PlatformIO ESP32 project
+[wokwi]
+version = 1
+firmware = '.pio\build\esp32dev\firmware.bin'
+elf = '.pio\build\esp32dev\firmware.elf'
