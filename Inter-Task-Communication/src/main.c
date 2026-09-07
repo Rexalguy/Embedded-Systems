@@ -55,7 +55,7 @@ void app_main(void) {
 
     // Create the two tasks
     xTaskCreate(sender_task, "producer", 2048, NULL, 1, NULL);
-    xTaskCreate(customer_task, "customer", 2048, NULL, 1, NULL);
+    xTaskCreate(customer_task, "customer", 2048, NULL, 2, NULL);
       
 
 }
