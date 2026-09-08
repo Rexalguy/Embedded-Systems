@@ -1,61 +1,55 @@
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "freertos/queue.h"
+#include "freertos/semphr.h"
+#include "driver/gpio.h"
 
-// Declare the Queue globally
-static QueueHandle_t sensorQueue = NULL;
+// Define the GPIO pin connected to the warning LED (GPIO 2 according to diagram.json)
+#define WARNING_LED GPIO_NUM_2
 
-// Producer: The sending task
-void sender_task(void *pvParameters){
-    int temp = 20;
+// Define the semaphore handler globally
+static SemaphoreHandle_t alertSem = NULL;
 
-    while(1) {
-        printf("[Producer] sendind temp: %d \n", temp);
+// Signaler: Decides when an alert happens
+void sensor_alert_task(void *pvParameters) {
+    while (1) {
+        //Simulate waiting for a condition every 4 seconds
+        vTaskDelay(pdMS_TO_TICKS(4000));
 
-        // xQueueSend: copies the value of 'temperature' into the queue.
-        // portMAX_DELAY tells the task to block forever if the queue is full.
-        BaseType_t status = xQueueSend(sensorQueue, &temp, pdMS_TO_TICKS(1000));
+        printf("[Sensor] Threshold breached! Triggering warning LED...\n");
 
-        if(status != pdPASS) {
-            printf("Failed to send to queue\n");
-        }
-        temp++;
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        //Give the semaphore - count (0 --> 1)
+        xSemaphoreGive(alertSem);
     }
-
 }
 
-// Consumer: Receiving task
 
-void customer_task(void *pvParameters) {
-    int received_temp = 0;
-
+// Worker: Waits for the signal to pulse the LED
+void led_blink_task(void *pvParameters) {
     while(1) {
-        // xQueueReceive: copied the value from the queue to received_temp
-        // Blocks until an item is available.
-        BaseType_t status = xQueueReceive(sensorQueue, &received_temp, pdMS_TO_TICKS(1000));
+        // Blocks indefinitely until the sensor task calls xSemaphoreGive()
+        if(xSemaphoreTake(alertSem, portMAX_DELAY) == pdTRUE) {
+            //Once the semaphore is received, the LED turns on for 500ms
+            gpio_set_level(WARNING_LED,1); //Turn LED ON
 
-        if(status == pdPASS) {
-            printf("[Consumer] received temp: %d \n", received_temp);
+            printf("[LED] Warning signal received. Blinking LED for 500ms...\n");
+            vTaskDelay(pdMS_TO_TICKS(500)); // Keep ON for 500ms
+            
+            gpio_set_level(WARNING_LED, 0); // Turn LED OFF
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        
     }
 }
 
 void app_main(void) {
-    // Create the queue: max 5 integers, each integer takes 4 bytes
-    sensorQueue = xQueueCreate(5, sizeof(int));
-    
-    if (sensorQueue == NULL) 
-    {
-        printf("Queue creation failed! Not enough heap memory.\n");
-        return;
-    }
 
-    // Create the two tasks
-    xTaskCreate(sender_task, "producer", 2048, NULL, 1, NULL);
-    xTaskCreate(customer_task, "customer", 2048, NULL, 2, NULL);
-      
+    // 1. Set the mode of the pin
+    gpio_set_direction(WARNING_LED, GPIO_MODE_OUTPUT);
+    // 1. Initialize the semaphore
+    alertSem = xSemaphoreCreateBinary();
+
+    xTaskCreate(sensor_alert_task, "sensor", 2048, NULL, 1, NULL);
+    xTaskCreate(led_blink_task,    "led",    2048, NULL, 2, NULL);
 
 }
+
