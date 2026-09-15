@@ -4,67 +4,78 @@
 #include "freertos/semphr.h"
 #include "driver/gpio.h"
 
-// Define the connection pins
-#define LED_GREEN GPIO_NUM_4
-#define LED_BLUE GPIO_NUM_5
+// Define the connection pin
+#define SHARED_LED_PIN GPIO_NUM_4
 
-// Global handle for the counting semaphore
-static SemaphoreHandle_t  ledSem = NULL;
+// 1. Declare the Mutex handle
+static SemaphoreHandle_t ledMutex = NULL;
 
-// Worker function that will be used to create the competing tasks
-void worker_task(void *pvParameters) {
+// Task 1: Alert Sequence (Fast Blinks)
+void alert_task(void *pvParameters) {
+    while(1) {
+        //Fires every 4 seconds
+        vTaskDelay(pdMS_TO_TICKS(4000));
 
-    int task_id = (int)pvParameters;  // Takes the task ID from the argument passed during task creation
+        printf("[Alert Task] Attempting to claim the status LED...\n");
 
-    while(1){
-        // Tasks request LEDs at staggered intervals
-        vTaskDelay(pdMS_TO_TICKS(1500 * task_id));
+        // 2. Lock the Mutex (Critical Section Begins)
+        if(xSemaphoreTake(ledMutex, portMAX_DELAY) == pdPASS) {
+            printf("[Alert Task] >> MUTEX LOCKED: Starting critical 3-pulse alert <<\n");
 
-        printf("[Task %d] Needs an LED to show activity. Checking availability...\n", task_id);
+            // Perform an uninterrupted, atomic 3-blink sequence
+            for(int i = 0; i < 3; i++) {
+                gpio_set_level(SHARED_LED_PIN, 1);
+                vTaskDelay(pdMS_TO_TICKS(100)); // On
+                gpio_set_level(SHARED_LED_PIN, 0);
+                vTaskDelay(pdMS_TO_TICKS(100)); // Off
+            }
 
-        // Try to take 1 token from the pool.
-        // If count > 0, decrements count and proceeds immediately.
-        // If count == 0, task enters Blocked state until someone calls xSemaphoreGive().
+            printf("[Alert Task] << Alert complete. RELEASING Mutex. >>\n");
 
-        if(xSemaphoreTake(ledSem, portMAX_DELAY) == pdTRUE) {
-            printf("[Task %d] >> ACQUIRED an LED! (Led count decremented)\n", task_id);
-
-            gpio_num_t acquired_pin = (task_id %2 == 0) ? LED_BLUE : LED_GREEN;
-            gpio_set_level(acquired_pin, 1);
-
-            // Hold the resource for 3 seconds of "work"
-            vTaskDelay(pdMS_TO_TICKS(3000));
-
-            // Done with the LED
-            gpio_set_level(acquired_pin, 0);
-            printf("[Task %d] << FINISHED work. Returning LED to pool.\n", task_id);
-
-            // Return 1 token to the pool (increments count)
-            xSemaphoreGive(ledSem);
+            // 3. Unlock the Mutex (Critical Section Ends)
+            xSemaphoreGive(ledMutex);
         }
     }
-} 
+}
 
-void app_main(void) {
-    // Init GPIOs
-    gpio_reset_pin(LED_GREEN);
-    gpio_reset_pin(LED_BLUE);
-    gpio_set_direction(LED_GREEN, GPIO_MODE_OUTPUT);
-    gpio_set_direction(LED_BLUE, GPIO_MODE_OUTPUT);
+// Task 2: Heartbeat Sequence (Long Solid Hold)
+void heartbeat_task(void *pvParameters) {
+    while(1) {
+        // Tries to run every 1 second
+        vTaskDelay(pdMS_TO_TICKS(1000));
 
-    // Create counting semaphore:
-    // Parameter 1: max_count (Maximum capacity = 2)
-    // Parameter 2: initial_count (Available right now = 2)
-    ledSem = xSemaphoreCreateCounting(2,2);
+        printf("[Heartbeat] Requesting LED for heartbeat pulse...\n");
 
-    if(ledSem == NULL) {
-        printf("Failed to create counting semaphore");
-        return;
+        if (xSemaphoreTake(ledMutex, portMAX_DELAY) == pdPASS)
+        {
+            printf("[Heartbeat] >> MUTEX LOCKED: Displaying steady heartbeat pulse <<\n");
 
+            // Hold the LED steady for 1.2 seconds
+            gpio_set_level(SHARED_LED_PIN, 1);
+            vTaskDelay(pdMS_TO_TICKS(1200));
+            gpio_set_level(SHARED_LED_PIN, 0);
+
+            printf("[Heartbeat] << Heartbeat finished. RELEASING Mutex. >>\n");
+
+            xSemaphoreGive(ledMutex);
+        }
+    }
+}
+
+// Main entry point for the ESP-IDF application
+void app_main(void){
+    // Initialise the pins
+    gpio_reset_pin(SHARED_LED_PIN);
+    gpio_set_direction(SHARED_LED_PIN, GPIO_MODE_OUTPUT);
+
+    // 4. Create the Mutex
+    // Starts in the "Unlocked" (Available) state
+    ledMutex = xSemaphoreCreateMutex();
+    if(ledMutex == NULL){
+        printf("ERROR: Could not create Mutex!\n");
     }
 
-    //We create the 3 competing tasks
-    xTaskCreate(worker_task, "worker1", 2048, (void *)1, 1, NULL);
-    xTaskCreate(worker_task, "worker2", 2048, (void *)2, 1, NULL);
-    xTaskCreate(worker_task, "worker3", 2048, (void *)3, 1, NULL);
-}
+    // Spawn both tasks: Alert has higher priority (2), Heartbeat has lower (1)
+    xTaskCreate(heartbeat_task, "heartbeat", 2048, NULL, 1, NULL);
+    xTaskCreate(alert_task,     "alert",     2048, NULL, 2, NULL);
+} 

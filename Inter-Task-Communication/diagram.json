@@ -12,42 +12,63 @@
     },
     {
       "type": "wokwi-resistor",
-      "id": "r_green",
+      "id": "r1",
       "top": 80,
       "left": 160,
-      "attrs": { "value": "220" }
+      "attrs": {
+        "value": "220"
+      }
     },
     {
       "type": "wokwi-led",
-      "id": "led_green",
+      "id": "led1",
       "top": 60,
       "left": 270,
-      "attrs": { "color": "green" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_blue",
-      "top": 160,
-      "left": 160,
-      "attrs": { "value": "220" }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_blue",
-      "top": 140,
-      "left": 270,
-      "attrs": { "color": "blue" }
+      "attrs": {
+        "color": "red"
+      }
     }
   ],
   "connections": [
-    [ "esp:TX", "$serialMonitor:RX", "", [] ],
-    [ "esp:RX", "$serialMonitor:TX", "", [] ],
-    [ "esp:4", "r_green:1", "green", [ "h20", "v0" ] ],
-    [ "r_green:2", "led_green:A", "green", [ "h20", "v0" ] ],
-    [ "led_green:C", "esp:GND.1", "black", [ "v30", "h-180" ] ],
-    [ "esp:5", "r_blue:1", "blue", [ "h20", "v0" ] ],
-    [ "r_blue:2", "led_blue:A", "blue", [ "h20", "v0" ] ],
-    [ "led_blue:C", "esp:GND.2", "black", [ "v30", "h-180" ] ]
+    [
+      "esp:TX",
+      "$serialMonitor:RX",
+      "",
+      []
+    ],
+    [
+      "esp:RX",
+      "$serialMonitor:TX",
+      "",
+      []
+    ],
+    [
+      "esp:4",
+      "r1:1",
+      "red",
+      [
+        "h20",
+        "v0"
+      ]
+    ],
+    [
+      "r1:2",
+      "led1:A",
+      "red",
+      [
+        "h20",
+        "v0"
+      ]
+    ],
+    [
+      "led1:C",
+      "esp:GND.1",
+      "black",
+      [
+        "v30",
+        "h-180"
+      ]
+    ]
   ],
   "dependencies": {}
 }
