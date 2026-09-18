@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "author": "Rexalguy",
+  "author": "Aburek Emmanuel",
   "editor": "wokwi",
   "parts": [
     {
@@ -11,20 +11,12 @@
       "attrs": {}
     },
     {
-      "type": "wokwi-resistor",
-      "id": "r1",
-      "top": 80,
-      "left": 160,
+      "type": "wokwi-7segment",
+      "id": "sevseg",
+      "top": 62.58,
+      "left": -177.32,
       "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led1",
-      "top": 60,
-      "left": 270,
-      "attrs": {
+        "common": "cathode",
         "color": "red"
       }
     }
@@ -43,30 +35,90 @@
       []
     ],
     [
+      "sevseg:A",
       "esp:4",
-      "r1:1",
-      "red",
+      "green",
       [
-        "h20",
-        "v0"
+        "v-8.76",
+        "h144"
       ]
     ],
     [
-      "r1:2",
-      "led1:A",
-      "red",
+      "sevseg:B",
+      "esp:5",
+      "green",
       [
-        "h20",
-        "v0"
+        "v0.84",
+        "h134.4"
       ]
     ],
     [
-      "led1:C",
+      "esp:10",
+      "esp:11",
+      "green",
+      [
+        "h0"
+      ]
+    ],
+    [
+      "sevseg:C",
+      "esp:6",
+      "green",
+      [
+        "v38.4",
+        "h76.8",
+        "v-96"
+      ]
+    ],
+    [
+      "sevseg:D",
+      "esp:7",
+      "green",
+      [
+        "v57.6",
+        "h115.2",
+        "v-105.6"
+      ]
+    ],
+    [
+      "sevseg:E",
+      "esp:15",
+      "green",
+      [
+        "v96",
+        "h144",
+        "v-134.4"
+      ]
+    ],
+    [
+      "sevseg:F",
+      "esp:16",
+      "green",
+      [
+        "v-18.36",
+        "h76.8",
+        "v57.6"
+      ]
+    ],
+    [
+      "sevseg:G",
+      "esp:17",
+      "green",
+      [
+        "v-18.36",
+        "h67.2",
+        "v67.2"
+      ]
+    ],
+    [
+      "sevseg:COM.1",
       "esp:GND.1",
       "black",
       [
-        "v30",
-        "h-180"
+        "h0",
+        "v144",
+        "h144",
+        "v-48"
       ]
     ]
   ],
